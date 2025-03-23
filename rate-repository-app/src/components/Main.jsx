@@ -1,14 +1,15 @@
 // rate-repository-app/src/components/Main.jsx
-const { StyleSheet, View } = require('react-native');
-const { Route, Routes, Navigate } = require('react-router-native');
-const RepositoryList = require('./RepositoryList');
-const AppBar = require('./AppBar');
-const SignIn = require('./SignIn');
-const SignUp = require('./SignUp');
-const SingleRepository = require('./SingleRepository');
-const CreateReview = require('./CreateReview');
-const MyReviews = require('./MyReviews');
-const theme = require('../theme');
+import { StyleSheet, View } from 'react-native';
+import { Route, Routes, Navigate } from 'react-router-native';
+import RepositoryList from './RepositoryList';
+import AppBar from './AppBar';
+import SignIn from './SignIn';
+import SignUp from './SignUp';
+import SingleRepository from './SingleRepository';
+import CreateReview from './CreateReview';
+import MyReviews from './MyReviews';
+import theme from '../theme';
+
 
 const styles = StyleSheet.create({
   container: {
@@ -36,4 +37,4 @@ const Main = () => {
   );
 };
 
-module.exports = Main;
+export default Main;
