@@ -1,4 +1,4 @@
 ## Other Repositories
 
-*Other repos:**
+**Other repos:**
 - 
