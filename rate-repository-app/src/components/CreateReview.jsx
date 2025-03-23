@@ -1,6 +1,18 @@
 // rate-repository-app/src/components/CreateReview.jsx
-const { View, TextInput, StyleSheet, FlatList, Alert, TouchableOpacity } = require('react-native');
-const { useState } = require('react');
+const { 
+  View, 
+  TextInput, 
+  StyleSheet, 
+  Alert, 
+  TouchableOpacity,
+  KeyboardAvoidingView,
+  Platform,
+  Keyboard,
+  TouchableWithoutFeedback,
+  ScrollView,
+  Modal
+} = require('react-native');
+const { useState, useRef } = require('react');
 const { useNavigate } = require('react-router-native');
 const { useFormik } = require('formik');
 const { useMutation, useLazyQuery } = require('@apollo/client');
@@ -12,8 +24,11 @@ const yup = require('yup');
 
 const styles = StyleSheet.create({
   container: {
-    padding: 15,
+    flex: 1,
     backgroundColor: 'white',
+  },
+  scrollView: {
+    padding: 15,
   },
   searchSection: {
     marginBottom: 15,
@@ -25,18 +40,31 @@ const styles = StyleSheet.create({
     padding: 10,
     marginVertical: 5,
   },
-  resultsContainer: {
+  modalContainer: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  modalContent: {
     backgroundColor: 'white',
-    borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 5,
-    maxHeight: 200,
-    marginTop: 5,
+    borderRadius: 10,
+    width: '100%',
+    maxHeight: '80%',
+    padding: 15,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
     marginBottom: 10,
-    zIndex: 10, // Ensure it appears above other content
+    color: theme.colors.textPrimary,
+  },
+  resultsContainer: {
+    paddingBottom: 10,
   },
   resultItem: {
-    padding: 16, // Increased for better touch targets
+    padding: 16,
     borderBottomWidth: 1,
     borderBottomColor: '#eee',
   },
@@ -77,6 +105,7 @@ const styles = StyleSheet.create({
   multilineInput: {
     textAlignVertical: 'top',
     minHeight: 100,
+    maxHeight: 200,
   },
   errorText: {
     color: theme.colors.error,
@@ -93,7 +122,11 @@ const styles = StyleSheet.create({
     backgroundColor: '#eee',
     borderWidth: 1,
     borderColor: theme.colors.textSecondary,
-    marginBottom: 10,
+    marginTop: 10,
+  },
+  closeButton: {
+    marginTop: 10,
+    backgroundColor: '#eee',
   },
   clearButtonText: {
     color: theme.colors.textPrimary,
@@ -125,11 +158,22 @@ const styles = StyleSheet.create({
   repositoryStats: {
     flexDirection: 'row',
     marginTop: 5,
+    flexWrap: 'wrap',
   },
   statItem: {
     marginRight: 15,
+    marginBottom: 5,
     fontSize: 12,
     color: theme.colors.textSecondary,
+  },
+  doneButtonContainer: {
+    marginTop: 10,
+    alignSelf: 'flex-end',
+  },
+  doneButtonText: {
+    color: theme.colors.primary,
+    fontWeight: 'bold',
+    padding: 10,
   }
 });
 
@@ -148,23 +192,62 @@ const reviewValidationSchema = yup.object().shape({
   text: yup.string(),
 });
 
+const RepositoryItem = ({ item, onSelect }) => {
+  return (
+    <TouchableOpacity 
+      style={styles.resultItem}
+      onPress={() => onSelect(item)}
+      activeOpacity={0.7}
+      hitSlop={{ top: 5, bottom: 5, left: 5, right: 5 }}
+    >
+      <View>
+        <Text style={styles.repoName}>{item.fullName}</Text>
+        {item.description && (
+          <Text style={styles.repoDescription} numberOfLines={1}>
+            {item.description}
+          </Text>
+        )}
+        <View style={styles.repositoryStats}>
+          <Text style={styles.statItem}>⭐ {item.stargazersCount}</Text>
+          <Text style={styles.statItem}>👁️ {item.reviewCount} reviews</Text>
+          <Text style={styles.statItem}>Rating: {item.ratingAverage}</Text>
+        </View>
+      </View>
+    </TouchableOpacity>
+  );
+};
+
 const CreateReview = () => {
   const navigate = useNavigate();
   const [createReview, { loading }] = useMutation(CREATE_REVIEW);
   const [selectedRepository, setSelectedRepository] = useState(null);
-  const [showResults, setShowResults] = useState(false);
-  const [searchRepositories, { data, loading: searchLoading }] = useLazyQuery(GET_REPOSITORIES, {
-    fetchPolicy: 'network-only', // Force a fresh fetch each time
+  const [searchModalVisible, setSearchModalVisible] = useState(false);
+  const [searchResults, setSearchResults] = useState([]);
+  const [searchLoading, setSearchLoading] = useState(false);
+  const [isKeyboardVisible, setKeyboardVisible] = useState(false);
+  const reviewInputRef = useRef(null);
+  
+  const [searchRepositories] = useLazyQuery(GET_REPOSITORIES, {
+    fetchPolicy: 'network-only',
+    onCompleted: (data) => {
+      const repositories = data?.repositories?.edges.map(edge => edge.node) || [];
+      setSearchResults(repositories);
+      setSearchLoading(false);
+    },
+    onError: () => {
+      setSearchLoading(false);
+    }
   });
+  
   const [debouncedSearch] = useState(() => 
     debounce((text) => {
-      if (text.length >= 2) { // Reduced minimum characters to 2
+      if (text.length >= 2) {
+        setSearchLoading(true);
         searchRepositories({ variables: { searchKeyword: text, first: 10 } });
-        setShowResults(true);
       } else {
-        setShowResults(false);
+        setSearchResults([]);
       }
-    }, 300) // Reduced debounce time for better responsiveness
+    }, 300)
   );
 
   // Form for repository search
@@ -249,8 +332,12 @@ const CreateReview = () => {
       stargazersCount: repository.stargazersCount
     });
     
-    setShowResults(false);
+    // Close modal and reset search
+    setSearchModalVisible(false);
     searchFormik.setFieldValue('searchTerm', '');
+    
+    // Dismiss keyboard after selection
+    Keyboard.dismiss();
   };
 
   const handleSearchChange = (text) => {
@@ -263,154 +350,201 @@ const CreateReview = () => {
     reviewFormik.resetForm();
   };
 
-  // Filter repositories based on search term to ensure we're only showing relevant results
-  const repositories = data?.repositories?.edges.map(edge => edge.node) || [];
-
-  // Ensure the keyboard dismisses when tapping outside input
+  // Hide keyboard when tapping outside input
   const dismissKeyboard = () => {
-    setShowResults(false);
+    Keyboard.dismiss();
+  };
+  
+  // Function to dismiss keyboard from review input
+  const doneEditing = () => {
+    Keyboard.dismiss();
+  };
+
+  const openSearchModal = () => {
+    setSearchModalVisible(true);
+    // Clear previous search
+    searchFormik.setFieldValue('searchTerm', '');
+    setSearchResults([]);
+  };
+
+  // Render repository search results in the modal
+  const renderRepositoryResults = () => {
+    if (searchLoading) {
+      return <Text style={styles.searchHint}>Searching...</Text>;
+    }
+    
+    if (searchResults.length === 0) {
+      if (searchFormik.values.searchTerm.length >= 2) {
+        return <Text style={styles.searchHint}>No repositories found</Text>;
+      }
+      return <Text style={styles.searchHint}>Type at least 2 characters to search</Text>;
+    }
+    
+    return searchResults.map(item => (
+      <RepositoryItem 
+        key={item.id} 
+        item={item} 
+        onSelect={handleRepositorySelect} 
+      />
+    ));
   };
 
   return (
-    <TouchableOpacity 
-      activeOpacity={1} 
-      onPress={dismissKeyboard} 
+    <KeyboardAvoidingView 
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
       style={styles.container}
     >
-      <Text style={styles.sectionTitle}>1. Find a Repository</Text>
-      
-      {!selectedRepository ? (
-        <View style={styles.searchSection}>
-          <TextInput
-            style={styles.searchInput}
-            placeholder="Search repositories (min 2 characters)..."
-            value={searchFormik.values.searchTerm}
-            onChangeText={handleSearchChange}
-            onBlur={() => {
-              // Delay hiding results to allow touch events to complete
-              setTimeout(() => setShowResults(false), 150);
-            }}
-            onFocus={() => searchFormik.values.searchTerm.length >= 2 && setShowResults(true)}
-          />
+      <TouchableWithoutFeedback onPress={dismissKeyboard}>
+        <ScrollView style={styles.scrollView}>
+          <Text style={styles.sectionTitle}>1. Find a Repository</Text>
           
-          {showResults && (
-            <View style={styles.resultsContainer}>
-              {searchLoading ? (
-                <Text style={styles.searchHint}>Searching...</Text>
-              ) : repositories.length > 0 ? (
-                <FlatList
-                  data={repositories}
-                  keyExtractor={(item) => item.id}
-                  renderItem={({ item }) => (
-                    <TouchableOpacity 
-                      style={styles.resultItem}
-                      onPress={() => handleRepositorySelect(item)}
-                      activeOpacity={0.7}
-                    >
-                      <Text style={styles.repoName}>{item.fullName}</Text>
-                      {item.description && (
-                        <Text style={styles.repoDescription} numberOfLines={1}>
-                          {item.description}
-                        </Text>
-                      )}
-                      <View style={styles.repositoryStats}>
-                        <Text style={styles.statItem}>⭐ {item.stargazersCount}</Text>
-                        <Text style={styles.statItem}>👁️ {item.reviewCount} reviews</Text>
-                        <Text style={styles.statItem}>Rating: {item.ratingAverage}</Text>
-                      </View>
-                    </TouchableOpacity>
-                  )}
-                />
-              ) : searchFormik.values.searchTerm.length >= 2 ? (
-                <Text style={styles.searchHint}>No repositories found</Text>
-              ) : (
-                <Text style={styles.searchHint}>Type at least 2 characters to search</Text>
+          {!selectedRepository ? (
+            <View style={styles.searchSection}>
+              <TouchableOpacity
+                style={styles.button}
+                onPress={openSearchModal}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.buttonText}>Search for a Repository</Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <View style={styles.selectedRepo}>
+              <Text style={styles.repoName}>{selectedRepository.fullName}</Text>
+              {selectedRepository.description && (
+                <Text style={styles.repoDescription}>{selectedRepository.description}</Text>
               )}
+              <View style={styles.repositoryStats}>
+                {selectedRepository.stargazersCount !== undefined && (
+                  <Text style={styles.statItem}>⭐ {selectedRepository.stargazersCount}</Text>
+                )}
+                {selectedRepository.reviewCount !== undefined && (
+                  <Text style={styles.statItem}>👁️ {selectedRepository.reviewCount} reviews</Text>
+                )}
+                {selectedRepository.ratingAverage !== undefined && (
+                  <Text style={styles.statItem}>Rating: {selectedRepository.ratingAverage}</Text>
+                )}
+              </View>
+              
+              <TouchableOpacity
+                style={[styles.button, styles.clearButton]} 
+                onPress={clearSelectedRepository}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.clearButtonText}>
+                  Change Repository
+                </Text>
+              </TouchableOpacity>
             </View>
           )}
-        </View>
-      ) : (
-        <View style={styles.selectedRepo}>
-          <Text style={styles.repoName}>{selectedRepository.fullName}</Text>
-          {selectedRepository.description && (
-            <Text style={styles.repoDescription}>{selectedRepository.description}</Text>
-          )}
-          <View style={styles.repositoryStats}>
-            {selectedRepository.stargazersCount !== undefined && (
-              <Text style={styles.statItem}>⭐ {selectedRepository.stargazersCount}</Text>
-            )}
-            {selectedRepository.reviewCount !== undefined && (
-              <Text style={styles.statItem}>👁️ {selectedRepository.reviewCount} reviews</Text>
-            )}
-            {selectedRepository.ratingAverage !== undefined && (
-              <Text style={styles.statItem}>Rating: {selectedRepository.ratingAverage}</Text>
-            )}
-          </View>
           
-          <TouchableOpacity
-            style={[styles.button, styles.clearButton]} 
-            onPress={clearSelectedRepository}
-            activeOpacity={0.7}
-          >
-            <Text style={styles.clearButtonText}>
-              Change Repository
-            </Text>
-          </TouchableOpacity>
+          <View style={styles.divider} />
+          
+          <Text style={styles.sectionTitle}>2. Write Your Review</Text>
+          
+          <View style={{ opacity: selectedRepository ? 1 : 0.5 }}>
+            <Text style={styles.label}>Rating (0-100)</Text>
+            <TextInput
+              style={[
+                styles.input,
+                reviewFormik.touched.rating && reviewFormik.errors.rating && styles.inputError,
+              ]}
+              placeholder="Rating between 0 and 100"
+              value={reviewFormik.values.rating}
+              onChangeText={reviewFormik.handleChange('rating')}
+              onBlur={() => reviewFormik.setFieldTouched('rating')}
+              keyboardType="numeric"
+              editable={!!selectedRepository}
+              returnKeyType="done"
+              onSubmitEditing={dismissKeyboard}
+            />
+            {reviewFormik.touched.rating && reviewFormik.errors.rating && (
+              <Text style={styles.errorText}>{reviewFormik.errors.rating}</Text>
+            )}
+
+            <Text style={styles.label}>Review</Text>
+            <View>
+              <TextInput
+                ref={reviewInputRef}
+                style={[
+                  styles.input,
+                  styles.multilineInput,
+                  reviewFormik.touched.text && reviewFormik.errors.text && styles.inputError,
+                ]}
+                placeholder="Write your review here"
+                value={reviewFormik.values.text}
+                onChangeText={reviewFormik.handleChange('text')}
+                onBlur={() => reviewFormik.setFieldTouched('text')}
+                multiline
+                editable={!!selectedRepository}
+                onFocus={() => setKeyboardVisible(true)}
+                onBlur={() => setKeyboardVisible(false)}
+              />
+              
+              {reviewInputRef.current && isKeyboardVisible && (
+                <TouchableOpacity 
+                  style={styles.doneButtonContainer}
+                  onPress={doneEditing}
+                >
+                  <Text style={styles.doneButtonText}>Done</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+            
+            {reviewFormik.touched.text && reviewFormik.errors.text && (
+              <Text style={styles.errorText}>{reviewFormik.errors.text}</Text>
+            )}
+
+            <TouchableOpacity 
+              style={[styles.button, !selectedRepository && { opacity: 0.5 }]} 
+              onPress={() => {
+                dismissKeyboard();
+                reviewFormik.handleSubmit();
+              }}
+              disabled={loading || !selectedRepository}
+              activeOpacity={selectedRepository ? 0.7 : 1}
+            >
+              <Text style={styles.buttonText}>
+                {loading ? 'Creating review...' : 'Create review'}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </ScrollView>
+      </TouchableWithoutFeedback>
+      
+      {/* Search Modal */}
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={searchModalVisible}
+        onRequestClose={() => setSearchModalVisible(false)}
+      >
+        <View style={styles.modalContainer}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Search Repositories</Text>
+            
+            <TextInput
+              style={styles.searchInput}
+              placeholder="Search repositories (min 2 characters)..."
+              value={searchFormik.values.searchTerm}
+              onChangeText={handleSearchChange}
+              autoFocus={true}
+            />
+            
+            <ScrollView style={styles.resultsContainer}>
+              {renderRepositoryResults()}
+            </ScrollView>
+            
+            <TouchableOpacity
+              style={[styles.button, styles.closeButton]}
+              onPress={() => setSearchModalVisible(false)}
+            >
+              <Text style={styles.clearButtonText}>Cancel</Text>
+            </TouchableOpacity>
+          </View>
         </View>
-      )}
-      
-      <View style={styles.divider} />
-      
-      <Text style={styles.sectionTitle}>2. Write Your Review</Text>
-      
-      <View style={{ opacity: selectedRepository ? 1 : 0.5 }}>
-        <Text style={styles.label}>Rating (0-100)</Text>
-        <TextInput
-          style={[
-            styles.input,
-            reviewFormik.touched.rating && reviewFormik.errors.rating && styles.inputError,
-          ]}
-          placeholder="Rating between 0 and 100"
-          value={reviewFormik.values.rating}
-          onChangeText={reviewFormik.handleChange('rating')}
-          onBlur={() => reviewFormik.setFieldTouched('rating')}
-          keyboardType="numeric"
-          editable={!!selectedRepository}
-        />
-        {reviewFormik.touched.rating && reviewFormik.errors.rating && (
-          <Text style={styles.errorText}>{reviewFormik.errors.rating}</Text>
-        )}
-
-        <Text style={styles.label}>Review</Text>
-        <TextInput
-          style={[
-            styles.input,
-            styles.multilineInput,
-            reviewFormik.touched.text && reviewFormik.errors.text && styles.inputError,
-          ]}
-          placeholder="Write your review here"
-          value={reviewFormik.values.text}
-          onChangeText={reviewFormik.handleChange('text')}
-          onBlur={() => reviewFormik.setFieldTouched('text')}
-          multiline
-          editable={!!selectedRepository}
-        />
-        {reviewFormik.touched.text && reviewFormik.errors.text && (
-          <Text style={styles.errorText}>{reviewFormik.errors.text}</Text>
-        )}
-
-        <TouchableOpacity 
-          style={[styles.button, !selectedRepository && { opacity: 0.5 }]} 
-          onPress={reviewFormik.handleSubmit}
-          disabled={loading || !selectedRepository}
-          activeOpacity={selectedRepository ? 0.7 : 1}
-        >
-          <Text style={styles.buttonText}>
-            {loading ? 'Creating review...' : 'Create review'}
-          </Text>
-        </TouchableOpacity>
-      </View>
-    </TouchableOpacity>
+      </Modal>
+    </KeyboardAvoidingView>
   );
 };
 
