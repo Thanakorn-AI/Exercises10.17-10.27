@@ -73,6 +73,7 @@ const RepositoryListHeader = ({ sortOrder, setSortOrder, searchKeyword, setSearc
       <TextInput
         style={styles.searchInput}
         placeholder="Search repositories..."
+        placeholderTextColor="#000000"
         value={searchQuery}
         onChangeText={handleSearch}
       />

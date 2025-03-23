@@ -526,6 +526,7 @@ const CreateReview = () => {
             <TextInput
               style={styles.searchInput}
               placeholder="Search repositories (min 2 characters)..."
+              placeholderTextColor="#a8a8a8"
               value={searchFormik.values.searchTerm}
               onChangeText={handleSearchChange}
               autoFocus={true}
