@@ -1,12 +1,13 @@
 // rate-repository-app/src/components/SignIn.jsx
-const { View, TextInput, Pressable, StyleSheet } = require("react-native");
-const { useFormik } = require("formik");
-const { useNavigate } = require("react-router-native");
+import React from 'react';
+import { View, TextInput, Pressable, StyleSheet } from 'react-native';
+import { useFormik } from 'formik';
+import { useNavigate } from 'react-router-native';
+import * as yup from 'yup';
 
-const Text = require("./Text");
-const theme = require("../theme");
-const yup = require("yup");
-const useSignIn = require("../hooks/useSignIn");
+import Text from './Text';
+import theme from '../theme';
+import useSignIn from '../hooks/useSignIn';
 
 const styles = StyleSheet.create({
   container: {
@@ -26,7 +27,7 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.primary,
     padding: 15,
     borderRadius: 5,
-    alignItems: "center",
+    alignItems: 'center',
     marginVertical: 5,
   },
   errorText: {
@@ -36,13 +37,14 @@ const styles = StyleSheet.create({
 });
 
 const validationSchema = yup.object().shape({
-  username: yup.string().required("Username is required"),
-  password: yup.string().required("Password is required"),
+  username: yup.string().required('Username is required'),
+  password: yup.string().required('Password is required'),
 });
 
+// Export SignInContainer component specifically for tests
 export const SignInContainer = ({ onSubmit }) => {
   const formik = useFormik({
-    initialValues: { username: "", password: "" },
+    initialValues: { username: '', password: '' },
     validationSchema,
     onSubmit,
   });
@@ -50,8 +52,8 @@ export const SignInContainer = ({ onSubmit }) => {
   const showErrors = () => {
     return (
       formik.isSubmitting ||
-      formik.values.username !== "" ||
-      formik.values.password !== ""
+      formik.values.username !== '' ||
+      formik.values.password !== ''
     );
   };
 
@@ -67,7 +69,7 @@ export const SignInContainer = ({ onSubmit }) => {
         ]}
         placeholder="Username"
         value={formik.values.username}
-        onChangeText={formik.handleChange("username")}
+        onChangeText={formik.handleChange('username')}
         testID="usernameField"
       />
       {showErrors() && formik.touched.username && formik.errors.username && (
@@ -83,7 +85,7 @@ export const SignInContainer = ({ onSubmit }) => {
         ]}
         placeholder="Password"
         value={formik.values.password}
-        onChangeText={formik.handleChange("password")}
+        onChangeText={formik.handleChange('password')}
         secureTextEntry
         testID="passwordField"
       />
@@ -112,8 +114,8 @@ const SignIn = () => {
 
     try {
       const { data } = await signIn({ username, password });
-      console.log("Authentication result:", data); // This should show the access token
-      navigate("/"); // Redirect to repositories list
+      console.log('Authentication result:', data); // This should show the access token
+      navigate('/'); // Redirect to repositories list
     } catch (e) {
       console.log(e);
     }
@@ -122,4 +124,4 @@ const SignIn = () => {
   return <SignInContainer onSubmit={onSubmit} />;
 };
 
-module.exports = SignIn;
+export default SignIn;

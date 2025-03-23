@@ -1,11 +1,10 @@
 // rate-repository-app/src/components/RepositoryList.jsx
-const React = require('react');
-const { useState, useEffect } = require('react');
-const { FlatList, View, StyleSheet, Pressable } = require('react-native');
-const { useNavigate } = require('react-router-native');
-const RepositoryItem = require('./RepositoryItem');
-const RepositoryListHeader = require('./RepositoryListHeader');
-const useRepositories = require('../hooks/useRepositories');
+import React, { useState, useEffect } from 'react';
+import { FlatList, View, StyleSheet, Pressable } from 'react-native';
+import { useNavigate } from 'react-router-native';
+import RepositoryItem from './RepositoryItem';
+import RepositoryListHeader from './RepositoryListHeader';
+import useRepositories from '../hooks/useRepositories';
 
 const styles = StyleSheet.create({
   separator: {
@@ -15,10 +14,9 @@ const styles = StyleSheet.create({
 
 const ItemSeparator = () => <View style={styles.separator} />;
 
-class RepositoryListContainer extends React.Component {
+export class RepositoryListContainer extends React.Component {
   renderHeader = () => {
     const { sortOrder, setSortOrder, searchKeyword, setSearchKeyword } = this.props;
-
     return (
       <RepositoryListHeader
         sortOrder={sortOrder}
@@ -31,7 +29,6 @@ class RepositoryListContainer extends React.Component {
 
   render() {
     const { repositories, navigate, onEndReach } = this.props;
-
     const repositoryNodes = repositories
       ? repositories.edges.map(edge => edge.node)
       : [];
@@ -108,4 +105,4 @@ const RepositoryList = () => {
   );
 };
 
-module.exports = RepositoryList;
+export default RepositoryList;

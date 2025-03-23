@@ -2,7 +2,7 @@
 import { render, screen } from '@testing-library/react-native';
 import { RepositoryListContainer } from '../../components/RepositoryList';
 import React from 'react';
-import { format } from 'date-fns';
+
 
 // Mock the useNavigate hook
 jest.mock('react-router-native', () => ({
