@@ -1,5 +1,5 @@
 // rate-repository-app/src/components/CreateReview.jsx
-const { View, TextInput, Pressable, StyleSheet, FlatList } = require('react-native');
+const { View, TextInput, StyleSheet, FlatList, Alert, TouchableOpacity } = require('react-native');
 const { useState } = require('react');
 const { useNavigate } = require('react-router-native');
 const { useFormik } = require('formik');
@@ -33,9 +33,10 @@ const styles = StyleSheet.create({
     maxHeight: 200,
     marginTop: 5,
     marginBottom: 10,
+    zIndex: 10, // Ensure it appears above other content
   },
   resultItem: {
-    padding: 12,
+    padding: 16, // Increased for better touch targets
     borderBottomWidth: 1,
     borderBottomColor: '#eee',
   },
@@ -58,7 +59,7 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   searchHint: {
-    padding: 10,
+    padding: 15,
     textAlign: 'center',
     fontStyle: 'italic',
     color: theme.colors.textSecondary,
@@ -96,10 +97,13 @@ const styles = StyleSheet.create({
   },
   clearButtonText: {
     color: theme.colors.textPrimary,
+    textAlign: 'center',
+    fontWeight: 'bold',
   },
   buttonText: {
     color: 'white',
     fontWeight: 'bold',
+    textAlign: 'center',
   },
   label: {
     marginTop: 10,
@@ -117,6 +121,15 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     marginBottom: 10,
     color: theme.colors.textPrimary,
+  },
+  repositoryStats: {
+    flexDirection: 'row',
+    marginTop: 5,
+  },
+  statItem: {
+    marginRight: 15,
+    fontSize: 12,
+    color: theme.colors.textSecondary,
   }
 });
 
@@ -140,16 +153,18 @@ const CreateReview = () => {
   const [createReview, { loading }] = useMutation(CREATE_REVIEW);
   const [selectedRepository, setSelectedRepository] = useState(null);
   const [showResults, setShowResults] = useState(false);
-  const [searchRepositories, { data, loading: searchLoading }] = useLazyQuery(GET_REPOSITORIES);
+  const [searchRepositories, { data, loading: searchLoading }] = useLazyQuery(GET_REPOSITORIES, {
+    fetchPolicy: 'network-only', // Force a fresh fetch each time
+  });
   const [debouncedSearch] = useState(() => 
     debounce((text) => {
-      if (text.length >= 3) {
-        searchRepositories({ variables: { searchKeyword: text, first: 8 } });
+      if (text.length >= 2) { // Reduced minimum characters to 2
+        searchRepositories({ variables: { searchKeyword: text, first: 10 } });
         setShowResults(true);
       } else {
         setShowResults(false);
       }
-    }, 500)
+    }, 300) // Reduced debounce time for better responsiveness
   );
 
   // Form for repository search
@@ -172,7 +187,7 @@ const CreateReview = () => {
     validationSchema: reviewValidationSchema,
     onSubmit: async (values) => {
       if (!selectedRepository) {
-        alert('Please select a repository first');
+        Alert.alert('Error', 'Please select a repository first');
         return;
       }
 
@@ -192,6 +207,27 @@ const CreateReview = () => {
         navigate(`/repositories/${repositoryId}`);
       } catch (e) {
         console.log('Error creating review:', e);
+        
+        // Handle specific error cases
+        if (e.message.includes('User has already reviewed this repository')) {
+          Alert.alert(
+            'Error',
+            'You have already reviewed this repository. You can edit your review from the My Reviews section.',
+            [
+              { 
+                text: 'Go to My Reviews', 
+                onPress: () => navigate('/my-reviews') 
+              },
+              {
+                text: 'Choose Another Repository',
+                onPress: () => clearSelectedRepository()
+              }
+            ]
+          );
+        } else {
+          // Generic error handling
+          Alert.alert('Error', `Failed to create review: ${e.message}`);
+        }
       }
     },
   });
@@ -207,7 +243,10 @@ const CreateReview = () => {
       fullName: repository.fullName,
       ownerName,
       repositoryName,
-      description: repository.description
+      description: repository.description,
+      ratingAverage: repository.ratingAverage,
+      reviewCount: repository.reviewCount,
+      stargazersCount: repository.stargazersCount
     });
     
     setShowResults(false);
@@ -221,23 +260,37 @@ const CreateReview = () => {
 
   const clearSelectedRepository = () => {
     setSelectedRepository(null);
+    reviewFormik.resetForm();
   };
 
+  // Filter repositories based on search term to ensure we're only showing relevant results
   const repositories = data?.repositories?.edges.map(edge => edge.node) || [];
 
+  // Ensure the keyboard dismisses when tapping outside input
+  const dismissKeyboard = () => {
+    setShowResults(false);
+  };
+
   return (
-    <View style={styles.container}>
+    <TouchableOpacity 
+      activeOpacity={1} 
+      onPress={dismissKeyboard} 
+      style={styles.container}
+    >
       <Text style={styles.sectionTitle}>1. Find a Repository</Text>
       
       {!selectedRepository ? (
         <View style={styles.searchSection}>
           <TextInput
             style={styles.searchInput}
-            placeholder="Search repositories..."
+            placeholder="Search repositories (min 2 characters)..."
             value={searchFormik.values.searchTerm}
             onChangeText={handleSearchChange}
-            onBlur={() => setShowResults(false)}
-            onFocus={() => searchFormik.values.searchTerm.length >= 3 && setShowResults(true)}
+            onBlur={() => {
+              // Delay hiding results to allow touch events to complete
+              setTimeout(() => setShowResults(false), 150);
+            }}
+            onFocus={() => searchFormik.values.searchTerm.length >= 2 && setShowResults(true)}
           />
           
           {showResults && (
@@ -249,9 +302,10 @@ const CreateReview = () => {
                   data={repositories}
                   keyExtractor={(item) => item.id}
                   renderItem={({ item }) => (
-                    <Pressable 
+                    <TouchableOpacity 
                       style={styles.resultItem}
                       onPress={() => handleRepositorySelect(item)}
+                      activeOpacity={0.7}
                     >
                       <Text style={styles.repoName}>{item.fullName}</Text>
                       {item.description && (
@@ -259,13 +313,18 @@ const CreateReview = () => {
                           {item.description}
                         </Text>
                       )}
-                    </Pressable>
+                      <View style={styles.repositoryStats}>
+                        <Text style={styles.statItem}>⭐ {item.stargazersCount}</Text>
+                        <Text style={styles.statItem}>👁️ {item.reviewCount} reviews</Text>
+                        <Text style={styles.statItem}>Rating: {item.ratingAverage}</Text>
+                      </View>
+                    </TouchableOpacity>
                   )}
                 />
-              ) : searchFormik.values.searchTerm.length >= 3 ? (
+              ) : searchFormik.values.searchTerm.length >= 2 ? (
                 <Text style={styles.searchHint}>No repositories found</Text>
               ) : (
-                <Text style={styles.searchHint}>Type at least 3 characters to search</Text>
+                <Text style={styles.searchHint}>Type at least 2 characters to search</Text>
               )}
             </View>
           )}
@@ -276,15 +335,27 @@ const CreateReview = () => {
           {selectedRepository.description && (
             <Text style={styles.repoDescription}>{selectedRepository.description}</Text>
           )}
+          <View style={styles.repositoryStats}>
+            {selectedRepository.stargazersCount !== undefined && (
+              <Text style={styles.statItem}>⭐ {selectedRepository.stargazersCount}</Text>
+            )}
+            {selectedRepository.reviewCount !== undefined && (
+              <Text style={styles.statItem}>👁️ {selectedRepository.reviewCount} reviews</Text>
+            )}
+            {selectedRepository.ratingAverage !== undefined && (
+              <Text style={styles.statItem}>Rating: {selectedRepository.ratingAverage}</Text>
+            )}
+          </View>
           
-          <Pressable 
+          <TouchableOpacity
             style={[styles.button, styles.clearButton]} 
             onPress={clearSelectedRepository}
+            activeOpacity={0.7}
           >
             <Text style={styles.clearButtonText}>
               Change Repository
             </Text>
-          </Pressable>
+          </TouchableOpacity>
         </View>
       )}
       
@@ -328,17 +399,18 @@ const CreateReview = () => {
           <Text style={styles.errorText}>{reviewFormik.errors.text}</Text>
         )}
 
-        <Pressable 
+        <TouchableOpacity 
           style={[styles.button, !selectedRepository && { opacity: 0.5 }]} 
           onPress={reviewFormik.handleSubmit}
           disabled={loading || !selectedRepository}
+          activeOpacity={selectedRepository ? 0.7 : 1}
         >
           <Text style={styles.buttonText}>
             {loading ? 'Creating review...' : 'Create review'}
           </Text>
-        </Pressable>
+        </TouchableOpacity>
       </View>
-    </View>
+    </TouchableOpacity>
   );
 };
 
