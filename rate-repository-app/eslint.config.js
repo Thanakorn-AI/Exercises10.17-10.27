@@ -1,4 +1,4 @@
-// eslint.config.js
+// rate-repository-app/eslint.config.js
 const reactPlugin = require('eslint-plugin-react');
 const reactNativePlugin = require('eslint-plugin-react-native');
 const { FlatCompat } = require('@eslint/eslintrc');

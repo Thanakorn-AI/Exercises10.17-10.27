@@ -1,7 +1,8 @@
 // rate-repository-app/src/components/RepositoryItem.jsx
-const { View, Image, StyleSheet } = require('react-native');
+const { View, Image, StyleSheet, Pressable } = require('react-native');
 const Text = require('./Text');
 const theme = require('../theme');
+const Linking = require('expo-linking');
 
 const styles = StyleSheet.create({
   container: {
@@ -39,6 +40,13 @@ const styles = StyleSheet.create({
   statItem: {
     alignItems: 'center',
   },
+  githubButton: {
+    backgroundColor: theme.colors.primary,
+    borderRadius: 5,
+    padding: 15,
+    marginTop: 15,
+    alignItems: 'center',
+  }
 });
 
 const formatCount = (count) => {
@@ -48,9 +56,15 @@ const formatCount = (count) => {
   return count.toString();
 };
 
-const RepositoryItem = ({ item }) => {
+const RepositoryItem = ({ item, showGithubLink = false }) => {
+  const handleOpenGithub = () => {
+    if (item.url) {
+      Linking.openURL(item.url);
+    }
+  };
+
   return (
-    <View style={styles.container}>
+    <View testID="repositoryItem" style={styles.container}>
       <View style={styles.flexRow}>
         <Image source={{ uri: item.ownerAvatarUrl }} style={styles.avatar} />
         <View style={styles.infoContainer}>
@@ -81,6 +95,11 @@ const RepositoryItem = ({ item }) => {
           <Text color="textSecondary">Rating</Text>
         </View>
       </View>
+      {showGithubLink && (
+        <Pressable style={styles.githubButton} onPress={handleOpenGithub}>
+          <Text color="white" fontWeight="bold">Open in GitHub</Text>
+        </Pressable>
+      )}
     </View>
   );
 };

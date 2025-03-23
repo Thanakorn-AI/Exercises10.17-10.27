@@ -58,10 +58,21 @@ const AppBar = () => {
     <SafeAreaView style={styles.container} edges={['top']}>
       <ScrollView horizontal contentContainerStyle={styles.scrollContainer}>
         <AppBarTab to="/">Repositories</AppBarTab>
+        
+        {isSignedIn && (
+          <>
+            <AppBarTab to="/create-review">Create a review</AppBarTab>
+            <AppBarTab to="/my-reviews">My reviews</AppBarTab>
+          </>
+        )}
+        
         {isSignedIn ? (
           <AppBarTab onPress={handleSignOut}>Sign Out</AppBarTab>
         ) : (
-          <AppBarTab to="/signin">Sign In</AppBarTab>
+          <>
+            <AppBarTab to="/signin">Sign In</AppBarTab>
+            <AppBarTab to="/signup">Sign Up</AppBarTab>
+          </>
         )}
       </ScrollView>
     </SafeAreaView>
