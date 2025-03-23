@@ -6,6 +6,7 @@ const { useMutation } = require('@apollo/client');
 const { CREATE_REVIEW } = require('../graphql/queries');
 const Text = require('./Text');
 const theme = require('../theme');
+const RepositorySearchInput = require('./RepositorySearchInput');
 const yup = require('yup');
 
 const styles = StyleSheet.create({
@@ -37,6 +38,12 @@ const styles = StyleSheet.create({
     padding: 15,
     alignItems: 'center',
     marginTop: 10,
+  },
+  label: {
+    marginTop: 10,
+    marginBottom: 2,
+    color: theme.colors.textPrimary,
+    fontWeight: 'bold',
   },
 });
 
@@ -85,36 +92,43 @@ const CreateReview = () => {
     },
   });
 
+  const handleOwnerSelect = (ownerName) => {
+    formik.setFieldValue('ownerName', ownerName);
+  };
+
+  const handleRepositorySelect = (repositoryName) => {
+    formik.setFieldValue('repositoryName', repositoryName);
+  };
+
   return (
     <View style={styles.container}>
-      <TextInput
-        style={[
-          styles.input,
-          formik.touched.ownerName && formik.errors.ownerName && styles.inputError,
-        ]}
-        placeholder="Repository owner name"
+      <Text style={styles.label}>Repository Owner</Text>
+      <RepositorySearchInput 
+        placeholder="Search repository owner"
         value={formik.values.ownerName}
-        onChangeText={formik.handleChange('ownerName')}
+        onChangeText={(text) => formik.setFieldValue('ownerName', text)}
+        onSelect={handleOwnerSelect}
+        fieldName="ownerName"
+        error={formik.errors.ownerName}
+        touched={formik.touched.ownerName}
         onBlur={() => formik.setFieldTouched('ownerName')}
+        searchType="owner"
       />
-      {formik.touched.ownerName && formik.errors.ownerName && (
-        <Text style={styles.errorText}>{formik.errors.ownerName}</Text>
-      )}
 
-      <TextInput
-        style={[
-          styles.input,
-          formik.touched.repositoryName && formik.errors.repositoryName && styles.inputError,
-        ]}
-        placeholder="Repository name"
+      <Text style={styles.label}>Repository Name</Text>
+      <RepositorySearchInput
+        placeholder="Search repository name"
         value={formik.values.repositoryName}
-        onChangeText={formik.handleChange('repositoryName')}
+        onChangeText={(text) => formik.setFieldValue('repositoryName', text)}
+        onSelect={handleRepositorySelect}
+        fieldName="repositoryName"
+        error={formik.errors.repositoryName}
+        touched={formik.touched.repositoryName}
         onBlur={() => formik.setFieldTouched('repositoryName')}
+        searchType="repository"
       />
-      {formik.touched.repositoryName && formik.errors.repositoryName && (
-        <Text style={styles.errorText}>{formik.errors.repositoryName}</Text>
-      )}
 
+      <Text style={styles.label}>Rating</Text>
       <TextInput
         style={[
           styles.input,
@@ -130,13 +144,14 @@ const CreateReview = () => {
         <Text style={styles.errorText}>{formik.errors.rating}</Text>
       )}
 
+      <Text style={styles.label}>Review</Text>
       <TextInput
         style={[
           styles.input,
           styles.multilineInput,
           formik.touched.text && formik.errors.text && styles.inputError,
         ]}
-        placeholder="Review"
+        placeholder="Write your review here"
         value={formik.values.text}
         onChangeText={formik.handleChange('text')}
         onBlur={() => formik.setFieldTouched('text')}
