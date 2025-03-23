@@ -1,6 +1,7 @@
 {
   "expo": {
     "name": "rate-repository-app",
+    "newArchEnabled": true,
     "slug": "rate-repository-app",
     "version": "1.0.0",
     "orientation": "portrait",

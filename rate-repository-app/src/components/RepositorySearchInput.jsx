@@ -102,21 +102,28 @@ const RepositorySearchInput = ({
     if (searchType === 'owner') {
       // Extract owner name from fullName (format is usually "owner/repo")
       const ownerName = repository.fullName.split('/')[0];
+      // Important: Update both the internal state and the parent component
+      setSearchTerm(ownerName);
       onSelect(ownerName);
     } else {
       // Extract repository name from fullName
       const repoName = repository.fullName.split('/')[1] || repository.fullName;
+      // Important: Update both the internal state and the parent component
+      setSearchTerm(repoName);
       onSelect(repoName);
     }
-    setShowResults(false);
+    // Delay hiding results slightly to ensure the selection is applied
+    setTimeout(() => {
+      setShowResults(false);
+    }, 100);
   };
 
   const handleBlur = () => {
-    // Use setTimeout to allow the selection to happen before hiding results
+    // Use longer timeout to allow the selection to happen before hiding results
     setTimeout(() => {
       setShowResults(false);
       onBlur();
-    }, 200);
+    }, 300);
   };
 
   const repositories = data?.repositories?.edges.map(edge => edge.node) || [];
