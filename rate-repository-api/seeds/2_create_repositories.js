@@ -1,3 +1,4 @@
+// rate-repository-api/seeds/2_create_repositories.js
 const oneHour = 1000 * 60 * 60;
 
 const createDateColumns = date => ({

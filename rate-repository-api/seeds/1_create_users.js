@@ -1,3 +1,4 @@
+// rate-repository-api/seeds/1_create_users.js
 const oneHour = 1000 * 60 * 60;
 
 const createDateColumns = date => ({
