@@ -1,3 +1,4 @@
+// rate-repository-api/src/graphql/mutations/deleteReview.js
 import { gql, UserInputError, ForbiddenError } from 'apollo-server';
 
 import Review from '../../models/Review';

@@ -1,3 +1,4 @@
+// rate-repository-api/src/graphql/mutations/createUser.js
 import { gql, ApolloError } from 'apollo-server';
 import * as yup from 'yup';
 import { v4 as uuid } from 'uuid';

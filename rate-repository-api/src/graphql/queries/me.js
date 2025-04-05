@@ -1,3 +1,4 @@
+// rate-repository-api/src/graphql/queries/me.js
 import { gql } from 'apollo-server';
 
 export const typeDefs = gql`

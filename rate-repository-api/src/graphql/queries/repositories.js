@@ -1,3 +1,4 @@
+// rate-repository-api/src/graphql/queries/repositories.js
 import { gql } from 'apollo-server';
 import { raw } from 'objection';
 import * as yup from 'yup';

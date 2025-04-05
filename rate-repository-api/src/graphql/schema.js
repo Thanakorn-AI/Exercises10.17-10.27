@@ -1,3 +1,4 @@
+// rate-repository-api/src/graphql/schema.js
 import { gql } from 'apollo-server';
 import { merge } from 'lodash';
 

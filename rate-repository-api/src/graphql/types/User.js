@@ -1,3 +1,4 @@
+// rate-repository-api/src/graphql/types/User.js
 import { gql } from 'apollo-server';
 import * as yup from 'yup';
 

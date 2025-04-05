@@ -1,3 +1,4 @@
+// rate-repository-api/src/graphql/types/ReviewConnection.js
 import { gql } from 'apollo-server';
 
 export const typeDefs = gql`

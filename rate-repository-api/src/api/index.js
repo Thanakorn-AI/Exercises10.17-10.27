@@ -1,3 +1,4 @@
+// rate-repository-api/src/api/index.js
 import Router from 'koa-router';
 
 import repositories from './repositories';

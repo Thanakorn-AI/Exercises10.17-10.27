@@ -1,3 +1,4 @@
+// rate-repository-api/src/api/repositories/getRepositories.js
 import { get } from 'lodash';
 
 import githubClient from '../../utils/githubClient';

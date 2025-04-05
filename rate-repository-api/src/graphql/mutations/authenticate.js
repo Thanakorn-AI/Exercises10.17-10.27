@@ -1,3 +1,4 @@
+// rate-repository-api/src/graphql/mutations/authenticate.js
 import { gql, UserInputError } from 'apollo-server';
 import * as yup from 'yup';
 import bcrypt from 'bcrypt';

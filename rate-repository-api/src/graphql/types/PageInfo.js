@@ -1,3 +1,4 @@
+// rate-repository-api/src/graphql/types/PageInfo.js
 import { gql } from 'apollo-server';
 
 export const typeDefs = gql`

@@ -1,3 +1,4 @@
+// rate-repository-api/src/models/Review.js
 import BaseModel from './BaseModel';
 import knex from '../utils/knex';
 

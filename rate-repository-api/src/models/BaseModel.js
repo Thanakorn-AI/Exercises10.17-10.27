@@ -1,3 +1,4 @@
+// rate-repository-api/src/models/BaseModel.js
 import { Model, QueryBuilder } from 'objection';
 
 import cursorPaginate from '../utils/pagination/cursorPaginate';
