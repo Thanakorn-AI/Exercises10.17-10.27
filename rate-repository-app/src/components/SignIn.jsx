@@ -1,5 +1,5 @@
 // rate-repository-app/src/components/SignIn.jsx
-import React from 'react';
+import React, { useState } from 'react'; 
 import { View, TextInput, Pressable, StyleSheet } from 'react-native';
 import { useFormik } from 'formik';
 import { useNavigate } from 'react-router-native';
@@ -92,6 +92,9 @@ export const SignInContainer = ({ onSubmit }) => {
       {showErrors() && formik.touched.password && formik.errors.password && (
         <Text style={styles.errorText}>{formik.errors.password}</Text>
       )}
+      {formik.status && formik.status.error && (
+        <Text style={styles.errorText}>{formik.status.error}</Text>
+      )}
       <Pressable 
         style={styles.button} 
         onPress={formik.handleSubmit}
@@ -108,16 +111,26 @@ export const SignInContainer = ({ onSubmit }) => {
 const SignIn = () => {
   const [signIn] = useSignIn();
   const navigate = useNavigate();
+  const [error, setError] = useState(null); // Add state for auth error
 
-  const onSubmit = async (values) => {
+  const onSubmit = async (values, { setSubmitting, setStatus }) => {
     const { username, password } = values;
 
     try {
+      setError(null); // Clear previous error
+      setStatus(null); // Clear previous form status
       const { data } = await signIn({ username, password });
-      console.log('Authentication result:', data); // This should show the access token
-      navigate('/'); // Redirect to repositories list
+      console.log('Authentication result:', data);
+      navigate('/');
     } catch (e) {
       console.log(e);
+      const errorMessage = e.message.includes('Invalid username or password')
+        ? 'Invalid username or password'
+        : 'An error occurred during sign-in. Please try again.';
+      setError(errorMessage);
+      setStatus({ error: errorMessage }); // Set form status to display the error
+    } finally {
+      setSubmitting(false);
     }
   };
 
