@@ -16,7 +16,7 @@ const { useState, useRef } = require('react');
 const { useNavigate } = require('react-router-native');
 const { useFormik } = require('formik');
 const { useMutation, useLazyQuery } = require('@apollo/client');
-const { CREATE_REVIEW, GET_REPOSITORIES } = require('../graphql/queries');
+const { CREATE_REVIEW, SEARCH_REPOSITORIES } = require('../graphql/queries');
 const Text = require('./Text');
 const theme = require('../theme');
 const { debounce } = require('lodash');
@@ -91,6 +91,11 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontStyle: 'italic',
     color: theme.colors.textSecondary,
+  },
+  searchError: {
+    padding: 15,
+    textAlign: 'center',
+    color: theme.colors.error,
   },
   input: {
     borderWidth: 1,
@@ -209,8 +214,7 @@ const RepositoryItem = ({ item, onSelect }) => {
         )}
         <View style={styles.repositoryStats}>
           <Text style={styles.statItem}>⭐ {item.stargazersCount}</Text>
-          <Text style={styles.statItem}>👁️ {item.reviewCount} reviews</Text>
-          <Text style={styles.statItem}>Rating: {item.ratingAverage}</Text>
+          <Text style={styles.statItem}>🍴 {item.forksCount}</Text>
         </View>
       </View>
     </TouchableOpacity>
@@ -224,17 +228,31 @@ const CreateReview = () => {
   const [searchModalVisible, setSearchModalVisible] = useState(false);
   const [searchResults, setSearchResults] = useState([]);
   const [searchLoading, setSearchLoading] = useState(false);
+  const [searchError, setSearchError] = useState(null);
   const [isKeyboardVisible, setKeyboardVisible] = useState(false);
   const reviewInputRef = useRef(null);
   
-  const [searchRepositories] = useLazyQuery(GET_REPOSITORIES, {
+  const [searchRepositories] = useLazyQuery(SEARCH_REPOSITORIES, {
     fetchPolicy: 'network-only',
     onCompleted: (data) => {
-      const repositories = data?.repositories?.edges.map(edge => edge.node) || [];
+      const repositories = data?.searchRepositories?.edges.map(edge => edge.node) || [];
       setSearchResults(repositories);
       setSearchLoading(false);
+      setSearchError(null);
     },
-    onError: () => {
+    onError: (error) => {
+      console.log('Error searching repositories:', error);
+      let errorMessage = 'Failed to search repositories. Please try again.';
+      if (error.message.includes('API rate limit exceeded')) {
+        errorMessage = 'GitHub API rate limit exceeded. Please try again later.';
+      } else if (error.message.includes('Bad credentials')) {
+        errorMessage = 'Authentication failed. Please check your GitHub token.';
+      } else if (error.message.includes('NETWORK_ERROR')) {
+        errorMessage = 'Network error: Unable to reach GitHub API. Please check your internet connection.';
+      } else if (error.message.includes('GITHUB_API_FAILURE')) {
+        errorMessage = 'GitHub API request failed. Please try again.';
+      }
+      setSearchError(errorMessage);
       setSearchLoading(false);
     }
   });
@@ -243,9 +261,11 @@ const CreateReview = () => {
     debounce((text) => {
       if (text.length >= 2) {
         setSearchLoading(true);
-        searchRepositories({ variables: { searchKeyword: text, first: 10 } });
+        setSearchError(null);
+        searchRepositories({ variables: { query: text, first: 10 } });
       } else {
         setSearchResults([]);
+        setSearchError(null);
       }
     }, 300)
   );
@@ -327,9 +347,8 @@ const CreateReview = () => {
       ownerName,
       repositoryName,
       description: repository.description,
-      ratingAverage: repository.ratingAverage,
-      reviewCount: repository.reviewCount,
-      stargazersCount: repository.stargazersCount
+      stargazersCount: repository.stargazersCount,
+      forksCount: repository.forksCount,
     });
     
     // Close modal and reset search
@@ -365,12 +384,17 @@ const CreateReview = () => {
     // Clear previous search
     searchFormik.setFieldValue('searchTerm', '');
     setSearchResults([]);
+    setSearchError(null);
   };
 
   // Render repository search results in the modal
   const renderRepositoryResults = () => {
     if (searchLoading) {
       return <Text style={styles.searchHint}>Searching...</Text>;
+    }
+    
+    if (searchError) {
+      return <Text style={styles.searchError}>{searchError}</Text>;
     }
     
     if (searchResults.length === 0) {
@@ -415,15 +439,8 @@ const CreateReview = () => {
                 <Text style={styles.repoDescription}>{selectedRepository.description}</Text>
               )}
               <View style={styles.repositoryStats}>
-                {selectedRepository.stargazersCount !== undefined && (
-                  <Text style={styles.statItem}>⭐ {selectedRepository.stargazersCount}</Text>
-                )}
-                {selectedRepository.reviewCount !== undefined && (
-                  <Text style={styles.statItem}>👁️ {selectedRepository.reviewCount} reviews</Text>
-                )}
-                {selectedRepository.ratingAverage !== undefined && (
-                  <Text style={styles.statItem}>Rating: {selectedRepository.ratingAverage}</Text>
-                )}
+                <Text style={styles.statItem}>⭐ {selectedRepository.stargazersCount}</Text>
+                <Text style={styles.statItem}>🍴 {selectedRepository.forksCount}</Text>
               </View>
               
               <TouchableOpacity

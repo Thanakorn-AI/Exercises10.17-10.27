@@ -1,4 +1,4 @@
-// rate-repository-api/src/config.js
+// Exercises10.17-10.27/rate-repository-api/src/config.js
 import dotenv from 'dotenv';
 import path from 'path';
 import { knexSnakeCaseMappers } from 'objection';

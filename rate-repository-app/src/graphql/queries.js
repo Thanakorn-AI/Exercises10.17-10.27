@@ -129,6 +129,31 @@ const DELETE_REVIEW = gql`
   }
 `;
 
+const SEARCH_REPOSITORIES = gql`
+  query searchRepositories($query: String!, $first: Int, $after: String) {
+    searchRepositories(query: $query, first: $first, after: $after) {
+      totalCount
+      pageInfo {
+        hasNextPage
+        endCursor
+      }
+      edges {
+        cursor
+        node {
+          id
+          fullName
+          description
+          language
+          forksCount
+          stargazersCount
+          ownerAvatarUrl
+          url
+        }
+      }
+    }
+  }
+`;
+
 module.exports = { 
   GET_REPOSITORIES, 
   GET_REPOSITORY, 
@@ -136,5 +161,6 @@ module.exports = {
   AUTHENTICATE, 
   CREATE_REVIEW, 
   CREATE_USER,
-  DELETE_REVIEW 
+  DELETE_REVIEW,
+  SEARCH_REPOSITORIES,
 };

@@ -19,6 +19,7 @@ import ReviewConnection from './types/ReviewConnection';
 import UserConnection from './types/UserConnection';
 import deleteReviewMutation from './mutations/deleteReview';
 import DateTime from './scalars/DateTime';
+import searchRepositoriesQuery from './queries/searchRepositories';
 
 const rootTypeDefs = gql`
   type Query {
@@ -49,6 +50,7 @@ export const typeDefs = [
   ReviewConnection.typeDefs,
   UserConnection.typeDefs,
   deleteReviewMutation.typeDefs,
+  searchRepositoriesQuery.typeDefs,
 ];
 
 export const resolvers = merge(
@@ -69,4 +71,5 @@ export const resolvers = merge(
   ReviewConnection.resolvers,
   UserConnection.resolvers,
   deleteReviewMutation.resolvers,
+  searchRepositoriesQuery.resolvers,
 );
