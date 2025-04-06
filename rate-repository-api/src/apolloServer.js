@@ -7,23 +7,35 @@ import logger from './utils/logger';
 import { resolvers, typeDefs } from './graphql/schema';
 
 const apolloErrorFormatter = (error) => {
-  logger.error(error);
+  logger.error('[GraphQL Error]', error);
 
-  const { originalError } = error;
+  const { originalError, message, path, extensions } = error;
+
   const isGraphQLError = !(originalError instanceof Error);
 
-  let normalizedError = new ApolloError(
-    'Something went wrong',
-    'INTERNAL_SERVER_ERROR',
-  );
-
   if (originalError instanceof ValidationError) {
-    normalizedError = toApolloError(error, 'BAD_USER_INPUT');
-  } else if (error.originalError instanceof ApolloError || isGraphQLError) {
-    normalizedError = error;
+    return toApolloError(error, 'BAD_USER_INPUT');
   }
 
-  return normalizedError;
+  if (originalError instanceof ApolloError || isGraphQLError) {
+    return error;
+  }
+
+  // Return detailed error info for debugging (only in development)
+  if (process.env.NODE_ENV !== 'production') {
+    return new ApolloError(
+      message,
+      (extensions && extensions.code) || 'INTERNAL_SERVER_ERROR',
+      {
+        originalErrorMessage: originalError && originalError.message,
+        stack: originalError && originalError.stack,
+        path: path,
+      },
+    );
+  }
+
+  // Fallback for production
+  return new ApolloError('Something went wrong', 'INTERNAL_SERVER_ERROR');
 };
 
 const createApolloServer = () => {
